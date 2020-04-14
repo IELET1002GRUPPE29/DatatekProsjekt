@@ -1,4 +1,6 @@
 #include <ESP32Servo.h>
+
+
 Servo myservo;  // create servo object to control a servo
 int pos = 0;    // variable to store the servo position
 int servoPin = 15;
@@ -8,6 +10,8 @@ int terskel_teller = 0;
 int terskel_temp = 28;
 int terskel_gass = 1000;
 int terskel_lux = 500;
+
+
 //******BUZZER*******
 #define LEDC_CHANNEL_0  0
 #define LEDC_TIMER_13_BIT 13
@@ -16,7 +20,11 @@ int terskel_lux = 500;
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
+
+
 //^^^^^^^^BUZZER^^^^^^^^
+
+
 /*
   Sensornode
   Describe what it does in layman's terms.  Refer to the components
@@ -27,8 +35,11 @@ int resolution = 8;
   Datatek prosjekt
   Av Michael Berg
 */
+
+
 // ===============================================================================================================
 //          INKLUDERING AV BIBLIOTEK OG DEFINISJON AV OBJEKTER
+
 #define BLYNK_PRINT Serial
 #include <analogWrite.h>
 #include <WiFi.h>
@@ -39,10 +50,13 @@ WidgetTerminal terminal(V5);
 WidgetLED alarmled(V14);
 BlynkTimer timer;
 Adafruit_VL6180X vl = Adafruit_VL6180X();
+
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
 // ===============================================================================================================
 //          GLOBALE VARIABLER
+
 unsigned long alarmtid = 0;    //Definerer tid for millis funksjon
 int alarmlengde = 30; //30s alarm (Varer like lenge som lengde mellom max/min målinger, kan dermed gi kontinuerlig alarm)
 int alarmos = 0;
@@ -81,8 +95,11 @@ char ssid[] = "PBM";
 char pass[] = "pbmeiendom";
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
+
 // ===============================================================================================================
 //          SETUP
+
 void setup() {
   ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_13_BIT);
   ledcAttachPin(LED_PIN, LEDC_CHANNEL_0);
@@ -92,26 +109,34 @@ void setup() {
   //Fyller array med 0
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
     avlesningerTemp[thisReading] = 0;
-  }
+}
+
   pinMode(tempPin, INPUT);
   pinMode(gassPin, INPUT);
   pinMode(ledPin, OUTPUT);
   //Vent for Serial kommunikasjon
+ 
   while (!Serial) {
     delay(1);
   }
+  
   //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
   if (! vl.begin()) {
     Serial.println("Failed to find sensor");
     while (1);
   }
+  
   Blynk.begin(auth, ssid, pass, IPAddress(91, 192, 221, 40), 8080);
   timer.setInterval(50L, myTimerEvent);
 }
+
+
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
 // ===============================================================================================================
 //          FUNKSJONER
+
 void max_and_min(float temperatur, float gassniva, float lux) {
   if (temperatur > maxverdiTemp) {
     maxverdiTemp = temperatur;
@@ -132,7 +157,9 @@ void max_and_min(float temperatur, float gassniva, float lux) {
     minverdiLux = lux;
   }
 };
+
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 BLYNK_WRITE(V3) {
   switch (param.asInt()) {
     case 1: {
@@ -165,7 +192,9 @@ BLYNK_WRITE(V3) {
       }
   }
 }
+
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 //Slider for numreadings
 BLYNK_WRITE(V7) {
   relevantnumReadings = param.asInt();
@@ -173,7 +202,10 @@ BLYNK_WRITE(V7) {
   total = 0;
   //Serial.println(relevantnumReadings);
 }
+
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
 float gjennomsnittArray(float * array, int len) {
   total = 0;
   for (int i = 0; i < len; i++)
@@ -186,7 +218,10 @@ float gjennomsnittArray(float * array, int len) {
   //Serial.println(relevantnumReadings);
   return (float(total) / float(len));
 }
+
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
 void myTimerEvent()
 {
   aRead = analogRead(gassPin);                             //Leser av analog spenningsverdi
@@ -197,6 +232,7 @@ void myTimerEvent()
   Blynk.virtualWrite(V0, temp);
   Blynk.virtualWrite(V1, gass);
   Blynk.virtualWrite(V2, lux);
+
   /*
     Serial.print(millis());
     Serial.print(" Temperatur: ");
@@ -205,7 +241,9 @@ void myTimerEvent()
     Serial.print(gass);
     Serial.print(" lux: ");
     Serial.print(lux);
+  
   */
+  
   if (selectedreading == 1) {
     Blynk.virtualWrite(V4, temp);
     String printstring = "The temperature is: " + String(temp) + "°C\n";
@@ -214,6 +252,7 @@ void myTimerEvent()
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerTemp, relevantnumReadings));
     }
   }
+  
   if (selectedreading == 2) {
     Blynk.virtualWrite(V4, gass);
     String printstring = "The analog gas reading is: " + String(gass) + "\n";
@@ -223,6 +262,7 @@ void myTimerEvent()
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerGass, relevantnumReadings));
     }
   }
+  
   if (selectedreading == 3) {
     Blynk.virtualWrite(V4, lux);
     String printstring = "The lux measurement is: " + String(lux) + "\n";
@@ -231,6 +271,8 @@ void myTimerEvent()
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerLux, relevantnumReadings));
     }
   }
+  
+  
   // read from the sensor:
   avlesningerTemp[readIndex] = float(temp);
   avlesningerLux[readIndex] = float(lux);
@@ -238,8 +280,11 @@ void myTimerEvent()
   max_and_min(temp, gass, lux);
   // advance to the next position in the array:
   readIndex = readIndex + 1;
+  
   Serial.println(readIndex);
+  
   // Dersom vi er på enden av det relevante spektrumet av arrayen..
+  
   if (readIndex >= relevantnumReadings) {
     // Start om igjen..
     en_boolsk_verdi_for_utregning = 1;
@@ -256,14 +301,22 @@ void myTimerEvent()
 //          SETUP
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
+
+
 void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
   uint32_t duty = (8191 / valueMax) * min(value, valueMax);
   ledcWrite(channel, duty);
 };
+
+
+
 void loop() {
   Blynk.run();
   timer.run();
   tid_nu = millis();
+
+  
   //myservo.write(180);
   if (alarmos == 1) {
     //LEDFLASH
@@ -278,6 +331,8 @@ void loop() {
       analogWrite(5, 100 * !ledstate);
     }
   };
+
+  
   if (tid_nu > alarmlengde + alarmtid) {
     alarmos = 0; // Skru av alarm
     digitalWrite(ledPin, LOW);
@@ -285,11 +340,14 @@ void loop() {
     //ledcWriteTone(channel, 0);
     // myservo.write(180);
   };
+  
+  
   if (tid_nu > tid + 20000) {
     Serial.println("max");
     // PRINT DEM FØRST
     // Serial.print("maxverdiTemp: " );
     // Serial.println(maxverdiTemp);
+  
     if (maxverdiTemp > terskel_temp) {
       terskel_teller++;
     }
@@ -299,18 +357,26 @@ void loop() {
     if (maxverdiGass > terskel_gass) {
       terskel_teller++;
     }
+    
+    
     Serial.println(terskel_teller + 100);
+    
     if (terskel_teller >= 2) {
       alarmos = 1;
       alarmtid = tid_nu;
       Blynk.notify("ALARM");
+    
     }
+    
+    
+    
     Blynk.virtualWrite(V8, maxverdiTemp);
     Blynk.virtualWrite(V9, minverdiTemp);
     Blynk.virtualWrite(V10, maxverdiLux);
     Blynk.virtualWrite(V11, minverdiLux);
     Blynk.virtualWrite(V12, maxverdiGass);
     Blynk.virtualWrite(V13, minverdiGass);
+    
     // SÅ NULLSTILL DEM
     maxverdiTemp = 0;
     maxverdiLux = 0;
@@ -319,6 +385,7 @@ void loop() {
     minverdiLux = 10000;
     minverdiGass = 10000;
     terskel_teller = 0; //Nullstill terskelteller
+    
     tid = tid_nu;
   }
 }
