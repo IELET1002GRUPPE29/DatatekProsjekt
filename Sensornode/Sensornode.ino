@@ -1,42 +1,3 @@
-#include <Servo.h>
-
-
-Servo myservo;  // create servo object to control a servo
-int pos = 0;    // variable to store the servo position
-int servoPin = 33;
-bool ledstate = 1;
-int ltid  = 0; //DDDDDDDDDD
-int terskel_teller = 0;
-int terskel_temp = 28;
-int terskel_gass = 100;
-int terskel_lux = 500;
-#include <Wire.h>
-
-#include <Adafruit_PWMServoDriver.h>
-Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40);
-#define SERVOMIN  125 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  575 // this is the 'maximum' pulse length count (out of 4096)
-
-//******BUZZER*******
-#define LEDC_CHANNEL_0  0
-#define LEDC_TIMER_13_BIT 13
-#define LEDC_BASE_FREQ 5000
-#define LED_PIN 5
-
-int servo_end_state = 0;
-int freq = 2000;
-int channel = 0;
-int resolution = 8;
-
-int test_buttonState = 0;
-unsigned long test_timer = 0;
-int test_dur = 1000;
-
-bool servotest = 0;
-
-//^^^^^^^^BUZZER^^^^^^^^
-
-
 /*
   Sensornode
   Describe what it does in layman's terms.  Refer to the components
@@ -51,17 +12,24 @@ bool servotest = 0;
 
 // ===============================================================================================================
 //          INKLUDERING AV BIBLIOTEK OG DEFINISJON AV OBJEKTER
-
 #define BLYNK_PRINT Serial
 #include <analogWrite.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include <BlynkSimpleEsp32.h>
 #include "Adafruit_VL6180X.h"
+
 WidgetTerminal terminal(V5);
 WidgetLED alarmled(V14);
 BlynkTimer timer;
 Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
+Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40); //0x40 I2C adresse på samme I2C linje som vl6180x
+
+
+#define SERVOMIN  125 // this is the 'minimum' pulse length count (out of 4096)
+#define SERVOMAX  575 // this is the 'maximum' pulse length count (out of 4096)
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
@@ -69,46 +37,66 @@ Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
 // ===============================================================================================================
 //          GLOBALE VARIABLER
 
-unsigned long alarmtid = 0;    //Definerer tid for millis funksjon
-int alarmlengde = 30000; //30s alarm (Varer like lenge som lengde mellom max/min målinger, kan dermed gi kontinuerlig alarm)
-int alarmos = 0;
-unsigned long tid_nu = 0;
-unsigned long tid = 0;    //Definerer tid for millis funksjon
-int period = 30000;        //Definerer periode (Tid mellom hver gang koden skal kjøre)
-float aRead = 0;              //Analog avlesning (0-4095)
-float R = 0;                  //Termistor resistans som skal utregnes
-float b = 3950;               //Termistor verdi
-float R_0 = 10000;            //10k resistans i spenningsdeler med 10k NTC termistor
-float T_0 = 20 + 273.15;      //Start temperatur [°C]
-float temp = 0;               //Temperatur [°C]
-int gass = 0;                 //Analog avlesning for gass høyere = mer "ugass"
-float lux = 0;
-int selectedreading = 1;      //Select sensor reading, 1 (LYS) by default
-const int numReadings = 50;        //Lager en 50 lang array
-int relevantnumReadings = 10;     //Det er 2-50 elementer som brukes (relevante)
-float avlesningerTemp[numReadings];      //Lager en array med lengde 50 som kan holde floats m
-float avlesningerGass[numReadings];      //Lager en array med lengde 50 som kan holde floats m
-float avlesningerLux[numReadings];      //Lager en array med lengde 50 som kan holde floats m
-int readIndex = 0;                //Indeksen til nåværende avlesning
-float total = 0;                  //Total for å finne gjennomsnitt
-float average = 0;                //Gjennomsnittet
-bool en_boolsk_verdi_for_utregning = 0;
-
-const int gassPin = 32;
-const int tempPin = 35;
-const int ledPin = 23;
+unsigned long alarmtid = 0;     //Definerer tid for millis funksjon
+int alarmlengde = 30000;        //30s alarm (Varer like lenge som lengde mellom max/min målinger, kan dermed gi kontinuerlig alarm)
+int alarmos = 0;                //Alarmstatusverdi
+unsigned long tid_nu = 0;       //Tidsvariabel som oppdateres med millis()
+unsigned long tid = 0;          //Definerer tid for millis funksjon
+int period = 30000;             //Definerer periode (Tid mellom hver gang koden skal kjøre)
+float aRead = 0;                //Analog avlesning (0-4095)
+float R = 0;                    //Termistor resistans som skal utregnes
+float b = 3950;                 //Termistor verdi
+float R_0 = 10000;              //10k resistans i spenningsdeler med 10k NTC termistor
+float T_0 = 20 + 273.15;        //Start temperatur [°C]
+float temp = 0;                 //Temperatur [°C]
+int gass = 0;                   //Analog avlesning for gass høyere = mer "ugass"
+float lux = 0;                  //Luxverdi (lys) fra VL6180x sensor
+int selectedreading = 1;                  //Select sensor reading, 1 (LYS) by default
+const int numReadings = 50;               //Lager en 50 lang array
+int relevantnumReadings = 10;             //Det er 2-50 elementer som brukes (relevante)
+float avlesningerTemp[numReadings];       //Lager en array med lengde 50 som kan holde floats m
+float avlesningerGass[numReadings];       //Lager en array med lengde 50 som kan holde floats m
+float avlesningerLux[numReadings];        //Lager en array med lengde 50 som kan holde floats m
+int readIndex = 0;                        //Indeksen til nåværende avlesning
+float total = 0;                          //Total for å finne gjennomsnitt
+float average = 0;                        //Gjennomsnittet
+bool en_boolsk_verdi_for_utregning = 0;   //Verdi som bestemmer når man kan regne ut gjennomsnittet
 
 
-float maxverdiTemp = 0;
+int terskel_teller = 0;                   //Teller for antall sensorer som overgår maks verdien
+int terskel_temp = 28;                    //Maksverdi for temperatur
+int terskel_gass = 100;                   //Maksverdi for gass
+int terskel_lux = 500;                    //Maksverdi for lux
+
+
+int servo_end_state = 0;                  //Bestemmer sluttposisjon til servo etter alarm
+int test_buttonState = 0;                 //Knappestatus for servotestknapp på Blynk
+unsigned long test_timer = 0;             //Timer for servotesting gjennom Blynk
+int test_dur = 1000;                      //Tid mellom servosveip
+
+bool servotest = 0;                       //Verdi som endres hvert sekund når servoen skal testes, brukes til å bestemme 180 eller 0 grader
+
+const int gassPin = 32;                   //Gass sensor er oppkoblet til GPIO32
+const int tempPin = 35;                   //Termistor er oppkoblet til GPIO35
+const int ledPin = 23;                    //Led er oppkoblet til GPIO23
+
+
+int pos = 0;                              //Servoposisjonsvariabel
+bool alarmstate = 1;                      //Alarmstatus 0 eller 1, bestemmer om ting skal være av eller på
+unsigned long forrige_alarmtid  = 0;      //Tidsteller som brukes for å initiere alarmendringer (av/på med lys/buzzer/servo)
+
+
+//Verdier som brukes for å lagre maks og min verdier
+float maxverdiTemp = 0;               //Setter maks-verdiene til 0 slik at vi vil få høyere verdier inn og overskriver                       
 float maxverdiLux = 0;
-float maxverdiGass = 0;
-float minverdiTemp = 10000; //Setter høyt slik at vi får lavere..
+float maxverdiGass = 0;               
+float minverdiTemp = 10000;           //Setter høyt slik at vi får lavere..
 float minverdiLux = 10000;
 float minverdiGass = 10000;
 
-char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";
-char ssid[] = "PBM";
-char pass[] = "pbmeiendom";
+char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
+char ssid[] = "PBM";                                //Nettverk
+char pass[] = "pbmeiendom";                         //Passord
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 
@@ -117,11 +105,9 @@ char pass[] = "pbmeiendom";
 //          SETUP
 
 void setup() {
-  ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_13_BIT);
-  ledcAttachPin(LED_PIN, LEDC_CHANNEL_0);
+
   Serial.begin(9600);
-  //myservo.setPeriodHertz(50);    // standard 50 hz servo
-  myservo.attach(servoPin);//, 250, 2300); // attaches the servo on pin 15 to the servo object
+  
   //Fyller array med 0
   for (int thisReading = 0; thisReading < numReadings; thisReading++) {
     avlesningerTemp[thisReading] = 0;
@@ -259,16 +245,6 @@ void myTimerEvent()
   Blynk.virtualWrite(V1, gass);
   Blynk.virtualWrite(V2, lux);
 
-  /*
-    Serial.print(millis());
-    Serial.print(" Temperatur: ");
-    Serial.print(temp);
-    Serial.print(" Gass: ");
-    Serial.print(gass);
-    Serial.print(" lux: ");
-    Serial.print(lux);
-  
-  */
   
   if (selectedreading == 1) {
     Blynk.virtualWrite(V4, temp);
@@ -325,7 +301,7 @@ void myTimerEvent()
   // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   // ===============================================================================================================
 }
-
+//COURTESY OF ROBOJAX
   int angleToPulse(int ang){
    int pulse = map(ang,0, 180, SERVOMIN,SERVOMAX);// map angle of 0 to 180 to Servo min and Servo max 
    Serial.print("Angle: ");Serial.print(ang);
@@ -342,12 +318,6 @@ void myTimerEvent()
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 
-
-
-void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
-  uint32_t duty = (8191 / valueMax) * min(value, valueMax);
-  ledcWrite(channel, duty);
-};
 
 
 //int statssss = 0;
@@ -370,17 +340,16 @@ if(test_buttonState == 1 && tid_nu > test_timer + test_dur){
     
     //LEDFLASH
     
-    if (tid_nu > 1000 + ltid){
-      ledstate = !ledstate;     //Skift status
+    if (tid_nu > 1000 + forrige_alarmtid){
+      alarmstate = !alarmstate;     //Skift status
             Serial.println("ALARM 2");
             
-      alarmled.setValue(ledstate*255);
-      digitalWrite(ledPin, ledstate);   //Lys
-      //ledcWriteTone(channel, freq * !ledstate);
-analogWrite(5, 100*ledstate);    
-board1.setPWM(0, 0, angleToPulse(180*ledstate) );
+      alarmled.setValue(alarmstate*255);
+      digitalWrite(ledPin, alarmstate);   //Lys
+analogWrite(5, 100*alarmstate);    
+board1.setPWM(0, 0, angleToPulse(180*alarmstate) );
 
-
+forrige_alarmtid = tid_nu;
 
     }
     
@@ -390,8 +359,8 @@ board1.setPWM(0, 0, angleToPulse(180*ledstate) );
       alarmled.setValue(0);
 
     digitalWrite(ledPin, LOW);
-digitalWrite(5, 0);    
-board1.setPWM(0, 0, angleToPulse(180*servo_end_state) );
+    analogWrite(5, 0);    
+    board1.setPWM(0, 0, angleToPulse(180*servo_end_state) );
     alarmos = 0; // Skru av alarm
 
   };
