@@ -28,6 +28,11 @@ int freq = 2000;
 int channel = 0;
 int resolution = 8;
 
+int test_buttonState = 0;
+unsigned long test_timer = 0;
+int test_dur = 1000;
+
+bool servotest = 0;
 
 //^^^^^^^^BUZZER^^^^^^^^
 
@@ -210,6 +215,12 @@ BLYNK_WRITE(V3) {
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
+BLYNK_WRITE(V15) {
+test_buttonState = param.asInt();
+}
+
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 //Slider for numreadings
 BLYNK_WRITE(V7) {
   relevantnumReadings = param.asInt();
@@ -345,6 +356,14 @@ void loop() {
   timer.run();
   tid_nu = millis();
 
+if(test_buttonState == 1 && tid_nu > test_timer + test_dur){
+  servotest = !servotest;
+  board1.setPWM(0, 0, angleToPulse(180*servotest) );
+
+
+  test_timer = tid_nu;
+  
+  }
   
   //myservo.write(180);
   if (alarmos == 1) {
@@ -368,6 +387,7 @@ board1.setPWM(0, 0, angleToPulse(180*ledstate) );
   if (tid_nu > alarmlengde + alarmtid) {
 
     servo_end_state = !servo_end_state; //Bytt
+      alarmled.setValue(0);
 
     digitalWrite(ledPin, LOW);
 digitalWrite(5, 0);    
@@ -378,12 +398,7 @@ board1.setPWM(0, 0, angleToPulse(180*servo_end_state) );
   
     };
 
-  
-  //if(alarmos == 0){
-        
-    //ledcWriteTone(channel, 0);
-    //}
-  
+
   
   if (tid_nu > tid + 20000) {
 
