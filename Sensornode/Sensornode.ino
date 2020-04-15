@@ -22,6 +22,8 @@ Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40);
 #define LEDC_TIMER_13_BIT 13
 #define LEDC_BASE_FREQ 5000
 #define LED_PIN 5
+
+int servo_end_state = 0;
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
@@ -349,47 +351,38 @@ void loop() {
     
     //LEDFLASH
     
-    if (tid_nu > 1000 + ltid){// && tid_nu <2000 + ltid && statssss == 0) {  //Dersom det har gått 500ms siden sist tid
+    if (tid_nu > 1000 + ltid){
       ledstate = !ledstate;     //Skift status
             Serial.println("ALARM 2");
             
-      //alarmled.setValue(ledstate*255);
+      alarmled.setValue(ledstate*255);
       digitalWrite(ledPin, ledstate);   //Lys
       //ledcWriteTone(channel, freq * !ledstate);
 analogWrite(5, 100*ledstate);    
 board1.setPWM(0, 0, angleToPulse(180*ledstate) );
-//statssss = 1;
 
 
 
     }
-    /*
-    if (tid_nu > 2000 + ltid && tid_nu < 3000 + ltid && statssss == 1) {  //Dersom det har gått 500ms siden sist tid
-
-                Serial.println("ALARM 3");
-                myservo.write(180*ledstate);
-                statssss = 2;
-
-                
-    }
-    if (tid_nu > 3000 + ltid && statssss == 2){                
-      statssss = 0;
-      ltid = tid_nu;                  //Definer ny tid
-}
-
-
-*/
-    };
+    
   if (tid_nu > alarmlengde + alarmtid) {
+
+    servo_end_state = !servo_end_state; //Bytt
+
+    digitalWrite(ledPin, LOW);
+digitalWrite(5, 0);    
+board1.setPWM(0, 0, angleToPulse(180*servo_end_state) );
     alarmos = 0; // Skru av alarm
 
   };
-  if(alarmos == 0){
-        digitalWrite(ledPin, LOW);
-analogWrite(5, 0);    
+  
+    };
+
+  
+  //if(alarmos == 0){
+        
     //ledcWriteTone(channel, 0);
-    // myservo.write(180);
-    }
+    //}
   
   
   if (tid_nu > tid + 20000) {
