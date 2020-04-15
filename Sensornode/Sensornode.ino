@@ -314,63 +314,55 @@ void loop() {
   timer.run();
   tid_nu = millis();
 
-  if (test_buttonState == 1 && tid_nu > test_timer + test_dur) {
-    servotest = !servotest;
-    board1.setPWM(0, 0, angleToPulse(180 * servotest) );
-    test_timer = tid_nu;
+  if (test_buttonState == 1 && tid_nu > test_timer + test_dur) {    //Dersom knappen holdes ned og det har gått nok tid siden test_timer
+    servotest = !servotest;                                         //Omdefiner 0->1 1->0 
+    board1.setPWM(0, 0, angleToPulse(180 * servotest) );            //Send instruks til servo på brett 0 og kanal 0 til å være 180 eller 0 grader
+    test_timer = tid_nu;                                            //Ny tid
   }
 
-  if (alarmos == 1) {
-
-    if (tid_nu > 1000 + forrige_alarmtid) {
-      alarmstate = !alarmstate;     //Skift status
-      alarmled.setValue(alarmstate * 255);
-      digitalWrite(ledPin, alarmstate);   //Lys
-      analogWrite(5, 100 * alarmstate);
-      board1.setPWM(0, 0, angleToPulse(180 * alarmstate) );
-      forrige_alarmtid = tid_nu;
+  if (alarmos == 1) {                                             //Dersom alarmverdi er 1
+    if (tid_nu > 1000 + forrige_alarmtid) {                       //Dersom det har gått ett sekund siden sist alarmtid
+      alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
+      alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
+      digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink 
+      analogWrite(5, 100 * alarmstate);                           //Buzzer buzz
+      board1.setPWM(0, 0, angleToPulse(180 * alarmstate) );       //Servo swipe
+      forrige_alarmtid = tid_nu;                                  //Ny tid
 
     }
 
-    if (tid_nu > alarmlengde + alarmtid) {
-      servo_end_state = !servo_end_state; //Bytt
-      alarmled.setValue(0);
-      digitalWrite(ledPin, LOW);
-      analogWrite(5, 0);
-      board1.setPWM(0, 0, angleToPulse(180 * servo_end_state) );
-      alarmos = 0; // Skru av alarm
+    if (tid_nu > alarmlengde + alarmtid) {                        //Dersom det har gått "alarmlengde" tid
+      servo_end_state = !servo_end_state;                         //Bytt endeposisjon for servo 0->1 1->0
+      alarmled.setValue(0);                                       //Blynk LED av
+      digitalWrite(ledPin, LOW);                                  //Fysisk LED av
+      analogWrite(5, 0);                                          //Buzzer av
+      board1.setPWM(0, 0, angleToPulse(180 * servo_end_state) );  //Servo settes til 180 eller 0 grader
+      alarmos = 0;                                                //Sett alarmverdi til 0 (av) 
     }
 
   }
 
 
 
-  if (tid_nu > tid_prev + maks_min_tid) {
-
-    Serial.println("max");
-    // PRINT DEM FØRST
-    // Serial.print("maxverdiTemp: " );
-    // Serial.println(maxverdiTemp);
-
-    if (maxverdiTemp > terskel_temp) {
-      terskel_teller++;
+  if (tid_nu > tid_prev + maks_min_tid) {   //Dersom det har gått maks_min_tid (30s) siden sist tid_prev
+    if (maxverdiTemp > terskel_temp) {      //Dersom maxverdiTemp er større enn terskel_temp
+      terskel_teller++;                     //Legg til en på terskel telleren 
     }
-    if (maxverdiLux > terskel_lux) {
+    if (maxverdiLux > terskel_lux) {        //Samme som ovenfor
       terskel_teller++;
     }
     if (maxverdiGass > terskel_gass) {
       terskel_teller++;
     }
 
-    if (terskel_teller >= 2) {
-      alarmos = 1;
-      alarmtid = tid_nu;
-      Serial.println("ALARM");
+    if (terskel_teller >= 2) {      //Dersom to sensorer gir verdier som er over terskelverdiene
+      alarmos = 1;                  //Sett alarmverdi til 1 (på)
+      alarmtid = tid_nu;            //Ny alarmtid
       //Blynk.notify("ALARM");
     }
 
 
-
+    //Skriv verdier til blynk
     Blynk.virtualWrite(V8, maxverdiTemp);
     Blynk.virtualWrite(V9, minverdiTemp);
     Blynk.virtualWrite(V10, maxverdiLux);
@@ -387,6 +379,6 @@ void loop() {
     minverdiGass = 10000;
     terskel_teller = 0; //Nullstill terskelteller
 
-    tid_prev = tid_nu;
+    tid_prev = tid_nu;    //Sett ny tid
   }
 }
