@@ -20,12 +20,14 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <BlynkSimpleEsp32.h>
 #include "Adafruit_VL6180X.h"
+#include <LiquidCrystal_I2C.h>
 
 WidgetTerminal terminal(V5);
 WidgetLED alarmled(V14);
 BlynkTimer timer;
 Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
 Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40); //0x40 I2C adresse på samme I2C linje som vl6180x
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
 #define SERVOMIN  125 // this is the 'minimum' pulse length count (out of 4096)
@@ -42,7 +44,7 @@ int alarmlengde = 30000;        //30s alarm (Varer like lenge som lengde mellom 
 unsigned long tid_nu = 0;       //Tidsvariabel som oppdateres med millis()
 unsigned long tid_prev = 0;          //Definerer tid for millis funksjon
 unsigned long test_timer = 0;             //Timer for servotesting gjennom Blynk
-unsigned long forrige_alarmtid  = 0;      //Tidsteller som brukes for å initiere alarmendringer (av/på med lys/buzzer/servo)
+unsigned long forrige_alarmtid  = 0;      //Tidsteller som brukes for å initiere alarmendringer (av/på med lys/buzzer/servo)f
 int test_dur = 1000;                      //Tid mellom servosveip
 int maks_min_tid = 30000;                 //Tid for hver maks/min avlesning
 
@@ -99,6 +101,13 @@ float minverdiLux = 10000;
 float minverdiGass = 10000;
 
 
+unsigned long knapptid = 0;
+int debouncetid = 100;
+int knappstatus = 0;
+int knappteller = 0;
+
+
+
 //Nettverk og Blynk
 char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
 char ssid[] = "PBM";                                //Nettverk
@@ -112,10 +121,9 @@ void setup() {
 
   Serial.begin(9600);
 
-  //Fyller array med 0
-  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
-    avlesningerTemp[thisReading] = 0;
-  }
+  lcd.begin();
+  lcd.print("Trykk på BOOT knapp");
+
 
   board1.begin();
   board1.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
@@ -292,6 +300,19 @@ void myTimerEvent()   //Kalles hvert x sek
     en_boolsk_verdi_for_utregning = 1;
     readIndex = 0;
   }
+  if (knappteller == 1) {
+    lcd.clear();
+    lcd.print("Temp: " + String(temp));
+  }
+  if (knappteller == 2) {
+    lcd.clear();
+    lcd.print("Gass: " + String(gass));
+  }
+  if (knappteller == 3) {
+    lcd.clear();
+    lcd.print("Lux: " + String(lux));
+  }
+
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -314,8 +335,24 @@ void loop() {
   timer.run();
   tid_nu = millis();
 
+  if (digitalRead(0) == LOW && knappstatus == 0) {    //Dersom knappen trykkes ned og "knappstatus" er 0
+
+    if ((tid_nu - knapptid) > debouncetid) {     //Dersom det har gått debounce tid siden sist knapptid
+      knappstatus = 1;                            //Sett knappstatus til 1
+      knappteller++;                              //Legg til en på telleren
+      knapptid = tid_nu;                          //Ny knappetid
+    }
+  }
+  if (knappstatus == 1 && digitalRead(0) == HIGH) {   //Dersom knappstatus er 1 og knappen er ikke nedtrykt
+    knappstatus = 0;                                    //Reset til 0                    
+  }
+  if (knappteller > 3) {                  //Dersom knappteller overstiger 3
+    knappteller = 1;                      /Skal den resettes til 1
+  }
+
+
   if (test_buttonState == 1 && tid_nu > test_timer + test_dur) {    //Dersom knappen holdes ned og det har gått nok tid siden test_timer
-    servotest = !servotest;                                         //Omdefiner 0->1 1->0 
+    servotest = !servotest;                                         //Omdefiner 0->1 1->0
     board1.setPWM(0, 0, angleToPulse(180 * servotest) );            //Send instruks til servo på brett 0 og kanal 0 til å være 180 eller 0 grader
     test_timer = tid_nu;                                            //Ny tid
   }
@@ -324,7 +361,7 @@ void loop() {
     if (tid_nu > 1000 + forrige_alarmtid) {                       //Dersom det har gått ett sekund siden sist alarmtid
       alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
       alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
-      digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink 
+      digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink
       analogWrite(5, 100 * alarmstate);                           //Buzzer buzz
       board1.setPWM(0, 0, angleToPulse(180 * alarmstate) );       //Servo swipe
       forrige_alarmtid = tid_nu;                                  //Ny tid
@@ -337,7 +374,7 @@ void loop() {
       digitalWrite(ledPin, LOW);                                  //Fysisk LED av
       analogWrite(5, 0);                                          //Buzzer av
       board1.setPWM(0, 0, angleToPulse(180 * servo_end_state) );  //Servo settes til 180 eller 0 grader
-      alarmos = 0;                                                //Sett alarmverdi til 0 (av) 
+      alarmos = 0;                                                //Sett alarmverdi til 0 (av)
     }
 
   }
@@ -346,7 +383,7 @@ void loop() {
 
   if (tid_nu > tid_prev + maks_min_tid) {   //Dersom det har gått maks_min_tid (30s) siden sist tid_prev
     if (maxverdiTemp > terskel_temp) {      //Dersom maxverdiTemp er større enn terskel_temp
-      terskel_teller++;                     //Legg til en på terskel telleren 
+      terskel_teller++;                     //Legg til en på terskel telleren
     }
     if (maxverdiLux > terskel_lux) {        //Samme som ovenfor
       terskel_teller++;
