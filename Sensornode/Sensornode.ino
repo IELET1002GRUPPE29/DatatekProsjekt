@@ -1,10 +1,10 @@
 /*
   Sensornode
-  Describe what it does in layman's terms.  Refer to the components
-  attached to the various pins.
-  The circuit:
-    list the components attached to each input
-    list the components attached to each output
+  Sensornoden er bygget rundt en ESP32, der det er blitt brukt en MQ2 Gass sensor, Vl6180x ToF sensor og en NTC
+  termistor i spenningsdeler som sensorer. I tilleg er det blitt brukt; servo motor, buzzer, lysdiode, knapp og 
+  LCD skjerm som brukergrensesnitt. Sensornoden er oppkoblet mot Blynk på NTNU.io sin sky, gjennom Blynk kan man
+  få grafisk innsyn i sensoravlesningene og teste servo motoren.
+
   Datatek prosjekt
   Av Michael Berg
 */
@@ -26,8 +26,8 @@ WidgetTerminal terminal(V5);
 WidgetLED alarmled(V14);
 BlynkTimer timer;
 Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
-Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40); //0x40 I2C adresse på samme I2C linje som vl6180x
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+Adafruit_PWMServoDriver pca9685 = Adafruit_PWMServoDriver(0x40); //0x40 I2C adresse på samme I2C linje som vl6180x
+LiquidCrystal_I2C lcd(0x27, 16, 2);       //I2C LCD Skjerm bruker 0x27 som addresse på samme I2C linje...
 
 
 #define SERVOMIN  125 // this is the 'minimum' pulse length count (out of 4096)
@@ -38,26 +38,32 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // ===============================================================================================================
 //          GLOBALE VARIABLER
+
 //Timere
-unsigned long alarmtid = 0;     //Definerer tid for millis funksjon
-int alarmlengde = 30000;        //30s alarm (Varer like lenge som lengde mellom max/min målinger, kan dermed gi kontinuerlig alarm)
-unsigned long tid_nu = 0;       //Tidsvariabel som oppdateres med millis()
-unsigned long tid_prev = 0;          //Definerer tid for millis funksjon
+unsigned long alarmtid = 0;               //Definerer tid for millis funksjon
+int alarmlengde = 30000;                  //30s alarm (Varer like lenge som lengde mellom max/min målinger, kan dermed gi kontinuerlig alarm)
+unsigned long tid_nu = 0;                 //Tidsvariabel som oppdateres med millis()
+unsigned long tid_prev = 0;               //Definerer tid for millis funksjon
 unsigned long test_timer = 0;             //Timer for servotesting gjennom Blynk
 unsigned long forrige_alarmtid  = 0;      //Tidsteller som brukes for å initiere alarmendringer (av/på med lys/buzzer/servo)f
 int test_dur = 1000;                      //Tid mellom servosveip
 int maks_min_tid = 30000;                 //Tid for hver maks/min avlesning
+unsigned long knapptid = 0;               //Tidsteller som brukes til å registrere sit knappetrykk for å debounce
+int debouncetid = 100;                    //Tid som brukes for å debounce
 
 //Enable, teller og status verdier
-bool alarmos = 0;                //Alarmstatusverdi
+bool alarmos = 0;                         //Alarmstatusverdi
 bool en_boolsk_verdi_for_utregning = 0;   //Verdi som bestemmer når man kan regne ut gjennomsnittet
 bool alarmstate = 1;                      //Alarmstatus 0 eller 1, bestemmer om ting skal være av eller på
 bool servotest = 0;                       //Verdi som endres hvert sekund når servoen skal testes, brukes til å bestemme 180 eller 0 grader
-bool pos = 0;                              //Servoposisjonsvariabel
+bool pos = 0;                             //Servoposisjonsvariabel
 int servo_end_state = 0;                  //Bestemmer sluttposisjon til servo etter alarm
 int test_buttonState = 0;                 //Knappestatus for servotestknapp på Blynk
 int selectedreading = 1;                  //Select sensor reading, 1 (LYS) by default
 int readIndex = 0;                        //Indeksen til nåværende avlesning
+int SERVOSWIPE[] = {SERVOMIN, SERVOMAX};  //Servoswipe array der SERVOMIN er 0 grader og SERVO max er 180 grader
+int knappteller = 0;                      //Teller for knappetrykk (3 statuser)
+int knappstatus = 0;                      //Knappstatus for å vite om knappen er nedtrykt eller ikke
 
 //Utregningsvariabler
 float aRead = 0;                //Analog avlesning (0-4095)
@@ -82,15 +88,11 @@ int terskel_temp = 28;                    //Maksverdi for temperatur
 int terskel_gass = 100;                   //Maksverdi for gass
 int terskel_lux = 500;                    //Maksverdi for lux
 
-
-
 //Pinverdier
 const int gassPin = 32;                   //Gass sensor er oppkoblet til GPIO32
 const int tempPin = 35;                   //Termistor er oppkoblet til GPIO35
 const int ledPin = 23;                    //Led er oppkoblet til GPIO23
-
-
-
+const int buzzerPin = 5;                  //Buzzer er oppkoblet til GPIO5
 
 //Verdier som brukes for å lagre maks og min verdier
 float maxverdiTemp = 0;               //Setter maks-verdiene til 0 slik at vi vil få høyere verdier inn og overskriver
@@ -100,52 +102,49 @@ float minverdiTemp = 10000;           //Setter høyt slik at vi får lavere..
 float minverdiLux = 10000;
 float minverdiGass = 10000;
 
-
-unsigned long knapptid = 0;
-int debouncetid = 100;
-int knappstatus = 0;
-int knappteller = 0;
-
-
-
 //Nettverk og Blynk
 char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
-char ssid[] = "PBM";                                //Nettverk
-char pass[] = "pbmeiendom";                         //Passord
+char ssid[] = "PBM";                                //Nettverksnavn
+char pass[] = "pbmeiendom";                         //Passord til nettverket
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 // ===============================================================================================================
 //          SETUP
-
 void setup() {
+  
+  Serial.begin(9600); //Starter seriekommunikasjon
 
-  Serial.begin(9600);
-
-  lcd.begin();
-  lcd.print("Trykk på BOOT knapp");
-
-
-  board1.begin();
-  board1.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
-
-
-  pinMode(tempPin, INPUT);
-  pinMode(gassPin, INPUT);
-  pinMode(ledPin, OUTPUT);
   //Vent for Serial kommunikasjon
-
   while (!Serial) {
     delay(1);
   }
 
-  //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
+    //Definering av pimodes
+  pinMode(tempPin, INPUT);    //Temperatursensor pin er satt som input
+  pinMode(gassPin, INPUT);    //Gass sensor pin er satt som input
+  pinMode(ledPin, OUTPUT);    //ledPin er satt som output
+  pinMode(buzzerPin, OUTPUT); //buzzerPin er satt som output
+
+  
+  ledcAttachPin(buzzerPin, 0); // assign a led pins to a channel
+  ledcSetup(0, 4000, 8); // 12 kHz PWM, 8-bit resolution
+
+
+  //Initiering av I2C kommunikasjon
+  lcd.begin();
+  lcd.print("Trykk BOOT BTN");
+  
+  pca9685.begin();                             //Starter PCA9685
+  pca9685.setPWMFreq(60);                      // Servo kjører på ca. 60hz
+  
   if (! vl.begin()) {
     Serial.println("Failed to find sensor");
-    while (1);
+    while (1);                                  //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
   }
+  
 
-  Blynk.begin(auth, ssid, pass, IPAddress(91, 192, 221, 40), 8080);
-  timer.setInterval(50L, myTimerEvent);
+  Blynk.begin(auth, ssid, pass, IPAddress(91, 192, 221, 40), 8080);   //Koble opp ESP32 til nettverket og skyen   
+  timer.setInterval(50L, myTimerEvent);                               //Blynk timer fopr å kjøre myTimerEvent funksjon                         
 }
 
 
@@ -317,13 +316,6 @@ void myTimerEvent()   //Kalles hvert x sek
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
-
-//COURTESY OF ROBOJAX
-int angleToPulse(int ang) {
-  int pulse = map(ang, 0, 180, SERVOMIN, SERVOMAX); // map angle of 0 to 180 to Servo min and Servo max
-  return pulse;
-}
-
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 // ===============================================================================================================
@@ -347,13 +339,13 @@ void loop() {
     knappstatus = 0;                                    //Reset til 0                    
   }
   if (knappteller > 3) {                  //Dersom knappteller overstiger 3
-    knappteller = 1;                      /Skal den resettes til 1
+    knappteller = 1;                      //Skal den resettes til 1
   }
 
 
   if (test_buttonState == 1 && tid_nu > test_timer + test_dur) {    //Dersom knappen holdes ned og det har gått nok tid siden test_timer
     servotest = !servotest;                                         //Omdefiner 0->1 1->0
-    board1.setPWM(0, 0, angleToPulse(180 * servotest) );            //Send instruks til servo på brett 0 og kanal 0 til å være 180 eller 0 grader
+    pca9685.setPWM(0, 0,SERVOSWIPE[servotest]);                     //Sett Servo PWM signal til min/max (0/180) grader
     test_timer = tid_nu;                                            //Ny tid
   }
 
@@ -362,8 +354,8 @@ void loop() {
       alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
       alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
       digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink
-      analogWrite(5, 100 * alarmstate);                           //Buzzer buzz
-      board1.setPWM(0, 0, angleToPulse(180 * alarmstate) );       //Servo swipe
+      ledcWrite(0, 100*!alarmstate);                              //Send PWM signal på buzzer
+      pca9685.setPWM(0, 0,SERVOSWIPE[alarmstate]);                //Sett Servo PWM signal til min/max (0/180) grader
       forrige_alarmtid = tid_nu;                                  //Ny tid
 
     }
@@ -372,8 +364,8 @@ void loop() {
       servo_end_state = !servo_end_state;                         //Bytt endeposisjon for servo 0->1 1->0
       alarmled.setValue(0);                                       //Blynk LED av
       digitalWrite(ledPin, LOW);                                  //Fysisk LED av
-      analogWrite(5, 0);                                          //Buzzer av
-      board1.setPWM(0, 0, angleToPulse(180 * servo_end_state) );  //Servo settes til 180 eller 0 grader
+      ledcWrite(0, 0); //Skru av buzzern
+      pca9685.setPWM(0, 0,SERVOSWIPE[servo_end_state]);
       alarmos = 0;                                                //Sett alarmverdi til 0 (av)
     }
 
