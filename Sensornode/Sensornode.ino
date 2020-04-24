@@ -177,10 +177,10 @@ void maks_min(float temperatur, float gassniva, float lux) {
 };
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
+//En funksjon for å bestemme hvilken sensorer som det skal leses fra og sender det til V4
 BLYNK_WRITE(V3) {
-  switch (param.asInt()) {
-    case 1: {
+  switch (param.asInt()) {                              //Switch som tar input fra virtuel pin no. 3. 
+    case 1: {                                           //1 = temperatur
         selectedreading = 1;
         terminal.clear();
         Blynk.setProperty(V4, "label", "Temperatur");
@@ -190,7 +190,7 @@ BLYNK_WRITE(V3) {
         Blynk.setProperty(V4, "/pin/", "C");
         break;
       }
-    case 2: {
+    case 2: {                                           //2 = gass
         selectedreading = 2;
         terminal.clear();
         Blynk.setProperty(V4, "label", "Gass");
@@ -199,7 +199,7 @@ BLYNK_WRITE(V3) {
         Blynk.setProperty(V4, "max", 4095);
         break;
       }
-    case 3: {
+    case 3: {                                           //3 = lux
         selectedreading = 3;
         terminal.clear();
         Blynk.setProperty(V4, "name", "lux");
@@ -336,7 +336,7 @@ void loop() {
     }
   }
   if (knappstatus == 1 && digitalRead(0) == HIGH) {   //Dersom knappstatus er 1 og knappen er ikke nedtrykt
-    knappstatus = 0;                                    //Reset til 0                    
+    knappstatus = 0;                                  //Reset til 0                    
   }
   if (knappteller > 3) {                  //Dersom knappteller overstiger 3
     knappteller = 1;                      //Skal den resettes til 1
@@ -364,8 +364,8 @@ void loop() {
       servo_end_state = !servo_end_state;                         //Bytt endeposisjon for servo 0->1 1->0
       alarmled.setValue(0);                                       //Blynk LED av
       digitalWrite(ledPin, LOW);                                  //Fysisk LED av
-      ledcWrite(0, 0); //Skru av buzzern
-      pca9685.setPWM(0, 0,SERVOSWIPE[servo_end_state]);
+      ledcWrite(0, 0);                                            //Skru av buzzern
+      pca9685.setPWM(0, 0,SERVOSWIPE[servo_end_state]);           //Sett Servo PWM signal til min/max (0/180) grader 
       alarmos = 0;                                                //Sett alarmverdi til 0 (av)
     }
 
@@ -377,7 +377,7 @@ void loop() {
     if (maxverdiTemp > terskel_temp) {      //Dersom maxverdiTemp er større enn terskel_temp
       terskel_teller++;                     //Legg til en på terskel telleren
     }
-    if (maxverdiLux > terskel_lux) {        //Samme som ovenfor
+    if (maxverdiLux > terskel_lux) {        
       terskel_teller++;
     }
     if (maxverdiGass > terskel_gass) {
@@ -387,7 +387,7 @@ void loop() {
     if (terskel_teller >= 2) {      //Dersom to sensorer gir verdier som er over terskelverdiene
       alarmos = 1;                  //Sett alarmverdi til 1 (på)
       alarmtid = tid_nu;            //Ny alarmtid
-      //Blynk.notify("ALARM");
+      //Blynk.notify("ALARM");      //Fungerer ikke på NTNU.io sin sky
     }
 
 
@@ -400,14 +400,14 @@ void loop() {
     Blynk.virtualWrite(V13, minverdiGass);
 
     // SÅ NULLSTILL DEM
-    maxverdiTemp = 0;
+    maxverdiTemp = 0;           //Maksimumsverdiene settes til en lav verdi          
     maxverdiLux = 0;
     maxverdiGass = 0;
-    minverdiTemp = 10000;   //settes til en høy verdi
+    minverdiTemp = 10000;       //Minimumsverdiene settes til en høy verdi
     minverdiLux = 10000;
     minverdiGass = 10000;
-    terskel_teller = 0; //Nullstill terskelteller
+    terskel_teller = 0;       //Nullstill terskelteller
 
-    tid_prev = tid_nu;    //Sett ny tid
+    tid_prev = tid_nu;    //Definer ny tid_prev
   }
 }
