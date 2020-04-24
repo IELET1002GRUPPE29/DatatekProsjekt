@@ -115,3 +115,4 @@ void turnSensorUpdate()
   // = 14680064/17578125 unit/(digit*us)
   turnAngle += (int64_t)d * 14680064 / 17578125;
 }
+
