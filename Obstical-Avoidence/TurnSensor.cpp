@@ -27,6 +27,7 @@ int16_t turnRate;
 // during calibration.
 int16_t gyroOffset;
 
+
 // This variable helps us keep track of how much time has passed
 // between readings of the gyro.
 uint16_t gyroLastUpdate = 0;
