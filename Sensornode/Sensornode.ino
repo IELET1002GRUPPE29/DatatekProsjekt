@@ -74,7 +74,7 @@ float T_0 = 20 + 273.15;        //Start temperatur [°C]
 float temp = 0;                 //Temperatur [°C]
 int gass = 0;                   //Analog avlesning for gass høyere = mer "ugass"
 float lux = 0;                  //Luxverdi (lys) fra VL6180x sensor
-const int numReadings = 50;               //Lager en 50 lang array
+const int numReadings = 50;               //Maks antall avlesninger som kan inngå i arrayet
 int relevantnumReadings = 10;             //Det er 2-50 elementer som brukes (relevante)
 float avlesningerTemp[numReadings];       //Lager en array med lengde 50 som kan holde floats m
 float avlesningerGass[numReadings];       //Lager en array med lengde 50 som kan holde floats m
@@ -112,7 +112,7 @@ char pass[] = "pbmeiendom";                         //Passord til nettverket
 //          SETUP
 void setup() {
   
-  Serial.begin(9600); //Starter seriekommunikasjon
+  Serial.begin(9600);           //Starter seriekommunikasjon
 
   //Vent for Serial kommunikasjon
   while (!Serial) {
@@ -120,26 +120,26 @@ void setup() {
   }
 
     //Definering av pimodes
-  pinMode(tempPin, INPUT);    //Temperatursensor pin er satt som input
-  pinMode(gassPin, INPUT);    //Gass sensor pin er satt som input
-  pinMode(ledPin, OUTPUT);    //ledPin er satt som output
-  pinMode(buzzerPin, OUTPUT); //buzzerPin er satt som output
+  pinMode(tempPin, INPUT);    
+  pinMode(gassPin, INPUT);    
+  pinMode(ledPin, OUTPUT);   
+  pinMode(buzzerPin, OUTPUT); 
 
-  
-  ledcAttachPin(buzzerPin, 0); // assign a led pins to a channel
-  ledcSetup(0, 4000, 8); // 12 kHz PWM, 8-bit resolution
-
+  ledcAttachPin(buzzerPin, 0); //Sett buzzerPin på kanal 0
+  ledcSetup(0, 4000, 8); //Kanal 0, PWM frekvens, 8-bit oppløsning
 
   //Initiering av I2C kommunikasjon
-  lcd.begin();
-  lcd.print("Trykk BOOT BTN");
-  
+
+  lcd.begin();                                //Starter LCD
+  lcd.print("Trykk BOOT BTN");                //Print tekst på lcd
+
   pca9685.begin();                             //Starter PCA9685
   pca9685.setPWMFreq(60);                      // Servo kjører på ca. 60hz
   
-  if (! vl.begin()) {
-    Serial.println("Failed to find sensor");
-    while (1);                                  //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
+  //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
+  while (! vl.begin()) {
+    Serial.println("Fant ikke Vl6180x");
+    delay (1);                                 
   }
   
 
@@ -150,6 +150,8 @@ void setup() {
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
+
 // ===============================================================================================================
 //          FUNKSJONER
 
@@ -225,29 +227,27 @@ BLYNK_WRITE(V7) {
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-
-float gjennomsnittArray(float * array, int len) {
-  total = 0;
-  for (int i = 0; i < len; i++)
-  {
-    total += float(array[i]);
+//Funksjon som finner gjennomsnittet av en array med gitt lengde
+float gjennomsnittArray(float * array, int len) { 
+  total = 0;                                            //Setter total til 0
+  for (int i = 0; i < len; i++)                         //Itererer gjennom arrayet
+  { 
+    total += float(array[i]);                           //Legger til verdier til total
   }
 
-  return (float(total) / float(len));
+  return (float(total) / float(len));                   //Returner gjennomsnittet
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
-
-void myTimerEvent()   //Kalles hvert x sek
+//Blynk timer event
+void myTimerEvent()   //Kalles hvert x sek, som definert i setup
 {
-  aRead = analogRead(tempPin);                             //Leser av analog spenningsverdi
-  R = aRead / (4095 - aRead) * R_0;                   //Regner ut termistorresistansen
+  aRead = analogRead(tempPin);                                //Leser av analog spenningsverdi
+  R = aRead / (4095 - aRead) * R_0;                           //Regner ut termistorresistansen
   temp = - 273.15 + 1 / ((1 / T_0) + (1 / b) * log(R / R_0)); //Regner ut temperaturen i C
-  gass = analogRead(gassPin);
+  gass = analogRead(gassPin);                                 //Henter inn sensoravlesninger
   lux = vl.readLux(VL6180X_ALS_GAIN_5);
-  Blynk.virtualWrite(V0, temp);
+  Blynk.virtualWrite(V0, temp);                               //Sendes til Blynk
   Blynk.virtualWrite(V1, gass);
   Blynk.virtualWrite(V2, lux);
 
