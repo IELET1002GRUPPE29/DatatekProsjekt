@@ -27,7 +27,7 @@ enum State {
 
 //Konstante variabler//
 
-const uint16_t motorSpeed = 350;
+const uint16_t motorSpeed = 250;
 const uint16_t turnSpeed = 200;
 const int acceleration = 2;
 float distance = 0;
