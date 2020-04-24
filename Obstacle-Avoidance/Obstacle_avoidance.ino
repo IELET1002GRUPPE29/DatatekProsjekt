@@ -15,99 +15,84 @@ LSM303 lsm303; // Accelerometer brukes for at dersom zumoen kolliderer skal den 
 L3G gyro; // Avgjør hvor mye Zumoen skal rotere // 
 
 // variabler til retningsfunkjsoner//
-enum State {
-  pause_state,
-  forward_left_state,
-  forward_right_state,
-  scan_left_state,
-  scan_right_state,
-  reverse_state,
-  forward_state
+enum Status {
+  paused,
+  forward_left,
+  forward_right,
+  left_scanning,
+  right_scanning,
+  reverseing,
+  advancing
 };
 
 //Konstante variabler//
 
-const uint16_t motorSpeed = 250;
-const uint16_t turnSpeed = 200;
+const int Max_speed = 250;
+const int rotation_speed = 200;
 const int acceleration = 2;
 float distance = 0;
 String batteryMessure = "";
 
-State state = pause_state;
-int curSpeed = 0;
+Status status_value = paused;
+int current_speed = 0;
 
 // Funksjoner //
 
 // Roter til venstre //
-void turnLeft(int degrees) {
+void Left_turn_fun(int degrees) {
   turnSensorReset();
-  motors.setSpeeds(-turnSpeed, turnSpeed);
-  int angle = 0;
+  motors.setSpeeds(-rotation_speed, rotation_speed);
+  int rotation = 0;
   do {
     delay(1);
     turnSensorUpdate();
-    angle = (((int32_t)turnAngle >> 16) * 360) >> 16;
-    lcd.gotoXY(0, 0);
-    lcd.print(angle);
-    lcd.print(" ");
-  } while (angle < degrees);
+    rotation = (((int32_t)turnAngle >> 16) * 360) >> 16;
+  } while (rotation < degrees);
   motors.setSpeeds(0, 0);
 }
 
 // Roter til høyere //
-void turnRight(int degrees) {
+void Right_turn_fun(int degrees) {
   turnSensorReset();
-  motors.setSpeeds(turnSpeed, -turnSpeed);
-  int angle = 0;
+  motors.setSpeeds(rotation_speed, -rotation_speed);
+  int rotation = 0;
   do {
     delay(1);
     turnSensorUpdate();
-    angle = (((int32_t)turnAngle >> 16) * 360) >> 16;
-    lcd.gotoXY(0, 0);
-    lcd.print(angle);
-    lcd.print(" ");
-  } while (angle > -degrees);
+    rotation = (((int32_t)turnAngle >> 16) * 360) >> 16;
+  } while (rotation > -degrees);
   motors.setSpeeds(0, 0);
 }
 
-// Stop //
-void stop() {
-  motors.setSpeeds(0, 0);
-}
 
 // Gå fremover //
-void forward() {
+void forward_fun() {
   
   turnSensorUpdate();
-  int angle = (((int32_t)turnAngle >> 16) * 360) >> 16;
+  int rotation = (((int32_t)turnAngle >> 16) * 360) >> 16;
 
   // kjør fremover og samtidig juster moterfarten for å holde retningen //
-  motors.setSpeeds(curSpeed + (angle * 5), curSpeed - (angle * 5));
-}
-
-// reversering //
-void reverse() {
-  motors.setSpeeds(-motorSpeed, -motorSpeed);
+  motors.setSpeeds(current_speed + (rotation * 5), current_speed - (rotation * 5));
 }
 
 // Scann til venstre //
 void scanLeft() {
-  motors.setSpeeds(-curSpeed, curSpeed);
+  motors.setSpeeds(-current_speed, current_speed);
 }
 
 // Scann til høyre //
 void scanRight() {
-  motors.setSpeeds(curSpeed, -curSpeed);
+  motors.setSpeeds(current_speed, -current_speed);
 }
 
 // Len mot venstre //
-void forwardLeft() {
-  motors.setSpeeds(curSpeed / 2, curSpeed);
+void forward_left_fun() {
+  motors.setSpeeds(current_speed / 2, current_speed);
 }
 
 // Len mot høyre //
-void forwardRight() {
-  motors.setSpeeds(curSpeed, curSpeed / 2);
+void forward_right_fun() {
+  motors.setSpeeds(current_speed, current_speed / 2);
 }
 
 //Display som skal i void-setup//
@@ -125,7 +110,7 @@ void lcd_startup(){
 //fulllandet Zumo viser 6V //
 void battery(){
 
-  uint16_t batteryLevel = readBatteryMillivolts() / 1000;
+  float batteryLevel = readBatteryMillivolts() / 1000;
   
   if (batteryLevel >=5) {
     batteryMessure = "Good";
@@ -222,10 +207,10 @@ void loop() {
   // Proximity sensors
   proxSensors.read();
 
-  int left_sensor = proxSensors.countsLeftWithLeftLeds();
-  int centerLeftSensor = proxSensors.countsFrontWithLeftLeds();
-  int centerRightSensor = proxSensors.countsFrontWithRightLeds();
-  int right_sensor = proxSensors.countsRightWithRightLeds();
+  int left_sensor_prox = proxSensors.countsLeftWithLeftLeds();
+  int center_left_sensor_prox = proxSensors.countsFrontWithLeftLeds();
+  int center_right_sensor_prox = proxSensors.countsFrontWithRightLeds();
+  int right_sensor_prox = proxSensors.countsRightWithRightLeds();
 
   // Accelerometer, sjekker om det blir brå stopp/kollisjon//
   lsm303.read();
@@ -233,107 +218,107 @@ void loop() {
   int16_t y = lsm303.a.y;
   int32_t magnitudeSquared = (int32_t)x * x + (int32_t)y * y;
 
-  // Change states, hjernen til Zumoen //
-  if (state == pause_state) {
+  // Change status_values, hjernen til Zumoen //
+  if (status_value == paused) {
     if (buttonPress) {
-      state = forward_state;
+      status_value = advancing;
       turnSensorReset();
     }
   }
   else if (buttonPress) {
-    state = pause_state;
+    status_value = paused;
   }
   else if (magnitudeSquared > 250000000) {
-    state = reverse_state;
+    status_value = reverseing;
   }
-  else if (state == scan_left_state) {
-    if (centerLeftSensor < 4 && centerRightSensor < 4) {
-      state = forward_state;
+  else if (status_value == left_scanning) {
+    if (center_left_sensor_prox < 4 && center_right_sensor_prox < 4) {
+      status_value = advancing;
       turnSensorReset();
     }
   }
-  else if (state == scan_right_state) {
-    if (centerLeftSensor < 4 && centerRightSensor < 4) {
-      state = forward_state;
+  else if (status_value == right_scanning) {
+    if (center_left_sensor_prox < 4 && center_right_sensor_prox < 4) {
+      status_value = advancing;
       turnSensorReset();
     }
   }
-  else if (state == forward_state) {
-    if (centerLeftSensor >= 5 && centerRightSensor >= 5) {
-      if (centerLeftSensor < centerRightSensor) {
-        state = scan_left_state;
+  else if (status_value == advancing) {
+    if (center_left_sensor_prox >= 5 && center_right_sensor_prox >= 5) {
+      if (center_left_sensor_prox < center_right_sensor_prox) {
+        status_value = left_scanning;
       } else {
-        state = scan_right_state;
+        status_value = right_scanning;
       }
     }
-    else if (centerLeftSensor >= 2 && centerRightSensor >= 2) {
-      if (centerLeftSensor < centerRightSensor) {
-        state = forward_left_state;
+    else if (center_left_sensor_prox >= 2 && center_right_sensor_prox >= 2) {
+      if (center_left_sensor_prox < center_right_sensor_prox) {
+        status_value = forward_left;
       } else {
-        state = forward_right_state;
+        status_value = forward_right;
       }
     }
   }
-  else if (state == forward_left_state || state == forward_right_state) {
-    if (centerLeftSensor < 2 && centerRightSensor < 2) {
-      state = forward_state;
+  else if (status_value == forward_left || status_value == forward_right) {
+    if (center_left_sensor_prox < 2 && center_right_sensor_prox < 2) {
+      status_value = advancing;
       turnSensorReset();
     }
-    if (centerLeftSensor >= 5 && centerRightSensor >= 5) {
-      if (centerLeftSensor < centerRightSensor) {
-        state = scan_left_state;
+    if (center_left_sensor_prox >= 5 && center_right_sensor_prox >= 5) {
+      if (center_left_sensor_prox < center_right_sensor_prox) {
+        status_value = left_scanning;
       } else {
-        state = scan_right_state;
+        status_value = right_scanning;
       }
     }
   }
 
   // Justering av motorfart //
 
-  if (state != pause_state && curSpeed < motorSpeed) {
-    curSpeed += acceleration;
+  if (status_value != paused && current_speed < Max_speed) {
+    current_speed += acceleration;
   }
 
-  if (state == pause_state) {
-    stop();
-    curSpeed = 0;
+  if (status_value == paused) {
+     motors.setSpeeds(0, 0);
+    current_speed = 0;
   }
-  else if (state == forward_state)
-    forward();
-  else if (state == forward_left_state)
-    forwardLeft();
-  else if (state == forward_right_state)
-    forwardRight();
-  else if (state == scan_left_state)
+  else if (status_value == advancing)
+    forward_fun();
+  else if (status_value == forward_left)
+    forward_left_fun();
+  else if (status_value == forward_right)
+    forward_right_fun();
+  else if (status_value == left_scanning)
     scanLeft();
-  else if (state == scan_right_state)
+  else if (status_value == right_scanning)
     scanRight();
-  else if (state == reverse_state) {
+  else if (status_value == reverseing) {
     lcd.gotoXY(0, 0);
     lcd.print("Reverse!");
-    reverse();
+    motors.setSpeeds(-Max_speed, -Max_speed);
     delay(250);
-    turnLeft(150);
-    curSpeed = 0;
+    Left_turn_fun(150);
+    current_speed = 0;
     delay(200);
-    state = forward_state;
+    status_value = advancing;
     lcd.clear();
     turnSensorReset();
   }
 
   //Display mens kjøring//
   lcd.gotoXY(0, 0);
-  if (state == pause_state)
+  if (status_value == paused)
     lcd.print("Traveled");
-    else if (state == forward_state)
+    else if (status_value == advancing)
     lcd.print("Freeway!");
-  else if (state == forward_left_state)
+  else if (status_value == forward_left)
     lcd.print("<-------");
-  else if (state == forward_right_state)
+  else if (status_value == forward_right)
     lcd.print("------->");
-  else if (state == scan_left_state)
+  else if (status_value == left_scanning)
     lcd.print("<--L?-->");
-  else if (state == scan_right_state)
+  else if (status_value == right_scanning)
     lcd.print("<--R?-->");
 
 // - Distanse måler med encoders - //
