@@ -216,7 +216,7 @@ void loop() {
   lsm303.read();
   int16_t x = lsm303.a.x;
   int16_t y = lsm303.a.y;
-  int32_t magnitudeSquared = (int32_t)x * x + (int32_t)y * y;
+  int32_t collisjon = (int32_t)x * x + (int32_t)y * y;
 
   // Change status_values, hjernen til Zumoen //
   if (status_value == paused) {
@@ -228,7 +228,7 @@ void loop() {
   else if (buttonPress) {
     status_value = paused;
   }
-  else if (magnitudeSquared > 250000000) {
+  else if (collisjon > 250000000) {
     status_value = reverseing;
   }
   else if (status_value == left_scanning) {
