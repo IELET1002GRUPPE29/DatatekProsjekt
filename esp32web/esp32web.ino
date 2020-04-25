@@ -52,21 +52,17 @@ const int  gmt = 3600;
 const int   daylight = 3600;
 String datostring = "";
 String tidstring = "";
-byte dd;//Dag
-byte mm;//mmåned
-int  yy;//År
-int hh24;//Timer
-int mi;//minutt
-int ss;//Sekund
-
+int dd;      //Dag
+int mm;      //mmåned
+int  yy;      //År
+int hh24;     //Timer
+int mi;       //minutt
+int ss;       //Sekund
 
 //Nettverk, SSID & Password
-const char* ssid = "PBM";  // Enter your SSID here
-const char* passord = "pbmeiendom";  //Enter your Password here
+const char* ssid = "PBM";  // SSID (Ruterens)
+const char* passord = "pbmeiendom";  //WiFi passord
 WebServer server(80);  // Object of WebServer(HTTP port, 80 is defult)
-
-
-
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
