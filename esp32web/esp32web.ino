@@ -1,8 +1,15 @@
-
 /*
-  ESP32 WebServer STA Mode
-  
+  Webserver
+  Webserveren er en videreutvikling av sensornoden der sensordata plottes gjennom http på en lokal server. 
+  Som tillegg har vi fått tida gjennom en NTPserver, gjennom internettet. 
+
+  Datatek prosjekt
+  Av Michael Berg og Elias
 */
+
+
+// ===============================================================================================================
+//          INKLUDERING AV BIBLIOTEK OG DEFINISJON AV OBJEKTER
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -14,8 +21,18 @@
 
 Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
 
-unsigned long tid = 0;
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ===============================================================================================================
 
+// ===============================================================================================================
+//          GLOBALE VARIABLER
+
+//Timere
+unsigned long tid = 0;
+unsigned long sist_avlesning = 0;
+int tid_mellom_avlesning = 5000;
+
+//Utregningsvariabler
 float aRead = 0;                //Analog avlesning (0-4095)
 float R = 0;                    //Termistor resistans som skal utregnes
 float b = 3950;                 //Termistor verdi
@@ -25,31 +42,36 @@ float temp = 0;                 //Temperatur [°C]
 int gass = 0;                   //Analog avlesning for gass høyere = mer "ugass"
 float lux = 0;                  //Luxverdi (lys) fra VL6180x sensor
 
+//Pinverdier
 const int gassPin = 32;                   //Gass sensor er oppkoblet til GPIO32
 const int tempPin = 35;                   //Termistor er oppkoblet til GPIO35
 
-unsigned long sist_avlesning = 0;
-int tid_mellom_avlesning = 5000;
-
-
+//NTP og tid
 const char* ntpServer = "pool.ntp.org";
 const int  gmt = 3600;
 const int   daylight = 3600;
+String datostring = "";
+String tidstring = "";
+byte dd;//Dag
+byte mm;//mmåned
+int  yy;//År
+int hh24;//Timer
+int mi;//minutt
+int ss;//Sekund
 
 
-// SSID & Password
+//Nettverk, SSID & Password
 const char* ssid = "PBM";  // Enter your SSID here
-const char* password = "pbmeiendom";  //Enter your Password here
-
+const char* passord = "pbmeiendom";  //Enter your Password here
 WebServer server(80);  // Object of WebServer(HTTP port, 80 is defult)
 
-void les_sensor() {
-  aRead = analogRead(tempPin);                             //Leser av analog spenningsverdi
-  R = aRead / (4095 - aRead) * R_0;                   //Regner ut termistorresistansen
-  temp = - 273.15 + 1 / ((1 / T_0) + (1 / b) * log(R / R_0)); //Regner ut temperaturen i C
-  gass = analogRead(gassPin);
-  lux = vl.readLux(VL6180X_ALS_GAIN_5);
-}
+
+
+
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ===============================================================================================================
+// ===============================================================================================================
+//          SETUP
 
 void setup() {
   Serial.begin(115200);
@@ -71,35 +93,37 @@ void setup() {
   Serial.println("Try Connecting to ");
   Serial.println(ssid);
   // Connect to your wi-fi modem
-  WiFi.begin(ssid, password);
-  // Check wi-fi is connected to wi-fi network
+  WiFi.begin(ssid, passord);
+  
+  //Vent for wifi tilkobling
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.print(".");
+    Serial.print("Venter på WiFi...");
   }
-  Serial.println("");
-  Serial.println("WiFi connected successfully");
-  Serial.print("Got IP: ");
-  Serial.println(WiFi.localIP());  //Show ESP32 IP on serial
-  server.on("/", handle_root);
+  
+  Serial.println("------------------------");
+  Serial.println("Koblet til WiFi");
+  Serial.print("Kopier denne IP addressen inn i nettleseren din: ");
+  Serial.println(WiFi.localIP());                                       //IP addresse for å koble til webserveren
+  server.on("/", handle_root);                                          
   server.begin();
-  Serial.println("HTTP server started");
+  Serial.println("HTTP webserver startet");
   delay(100);
-    configTime(gmt, daylight, ntpServer);
-
-  les_sensor(); //Les for å få verdier
-  getTime();
+  
+  configTime(gmt, daylight, ntpServer);         //Konfigurer tid...
+  les_sensor();                                 //Få sensor verdier til å starte html siden med
+  getTime();                                    //Samme for tid ^
 }
-String datostring = "";
-String tidstring = "";
-byte dd;//Dag
-byte mm;//mmåned
-int  yy;//År
-int hh24;//Timer
-int mi;//minutt
-int ss;//Sekund
 
 
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ===============================================================================================================
+
+
+// ===============================================================================================================
+//          FUNKSJONER
+
+//En funksjon for å hente tiden fra NTP serveren
 void getTime()
 {
   struct tm timeinfo;
@@ -118,61 +142,75 @@ void getTime()
 datostring = String(dd) + ":" + String(mm)+ ":" +String(yy);
 tidstring = String(hh24)+  ":" +String(mi)+  ":" +String(ss);
 //Bruker dd:mm:yy og hh24:mi:ss
-
 }
-// Handle root url (/)
+
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+//Handle som kalles hver gang IPen skrives i nettleseren 
+
 void handle_root() {
-  server.send(200, "text/html", getPage());
+  server.send(200, "text/html", getHTML());     //Kode nr 200, siden er åpnet riktig med html koden
 }
 
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+//Sensor avlesning
 
+void les_sensor() {
+  aRead = analogRead(tempPin);                                //Leser av analog spenningsverdi
+  R = aRead / (4095 - aRead) * R_0;                           //Regner ut termistorresistansen
+  temp = - 273.15 + 1 / ((1 / T_0) + (1 / b) * log(R / R_0)); //Regner ut temperaturen i C
+  gass = analogRead(gassPin);                                     
+  lux = vl.readLux(VL6180X_ALS_GAIN_5);
+}
 
-String getPage() {
+//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+//HTML siden
 
-  String page = "<html><meta charset='UTF-8'>";
+String getHTML() {
+  String html = "<html><meta charset='UTF-8'>";             //Lager HTML siden som en string
 
-  page += "<body><table><tr><th>Måling</th><th>Verdi</th>";
-  page += "</tr><tr><td>Temperatur</td><td>";
-  page += temp;
-  page += " *C</td></tr>";
+  html += "<body><table><tr><th>Måling</th><th>Verdi</th>";
+  html += "</tr><tr><td>Temperatur</td><td>";
+  html += temp;
+  html += " *C</td></tr>";
 
-  page += "<tr><td>Lysstyrke</td><td>";
-  page += lux;
-  page += " Lux</td> </tr>";
+  html += "<tr><td>Lysstyrke</td><td>";
+  html += lux;
+  html += " Lux</td> </tr>";
 
-  page += "<tr><td>Gass</td><td>";
-  page += gass;
-  page += "</td></tr>";
+  html += "<tr><td>Gass</td><td>";
+  html += gass;
+  html += "</td></tr>";
 
-  page += "<tr><td>Tid</td><td>";
-  page += tidstring;
-  page += "</td></tr>";
+  html += "<tr><td>Klokke</td><td>";
+  html += tidstring;
+  html += "</td></tr>";
 
-  page += "<tr><td>Dato</td><td>";
-  page += datostring;
-  page += "</td></tr>";
+  html += "<tr><td>Dato</td><td>";
+  html += datostring;
+  html += "</td></tr>";
   
-  page += "<tr><td>Uptime</td><td>";
-  page += tid / 1000;
-  page += "s</td> </tr></table>";
+  html += "<tr><td>Uptime</td><td>";
+  html += tid / 1000;
+  html += "s</td> </tr></table>";
 
-  page += "<meta http-equiv=\"refresh\" content=\"5\">";
-  page += "</body></html>";
-  return (page);
+  html += "<meta http-equiv=\"refresh\" content=\"5\">";
+  html += "</body></html>";
+  return (html);
 }
 
-
-
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ===============================================================================================================
+// ===============================================================================================================
+//          LOOP
 
 void loop() {
-
   tid = millis();
 
-  if (tid > sist_avlesning + tid_mellom_avlesning) {
+  if (tid > sist_avlesning + tid_mellom_avlesning) {      //Millis funksjon for å hente tid og sensorverdier
     les_sensor();
     getTime();
     sist_avlesning = tid;
   }
 
-  server.handleClient();
+  server.handleClient();      //Sjekker webserveren og håndterer hendelser på html siden
 }
