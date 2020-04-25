@@ -76,6 +76,7 @@ WebServer server(80);  // Object of WebServer(HTTP port, 80 is defult)
 void setup() {
   Serial.begin(115200);
 
+  //Vent på serial kommunikasjon
   while (!Serial) {
     delay(1);
   }
@@ -86,13 +87,9 @@ void setup() {
     while (1);
   }
 
-
-
-
-
-  Serial.println("Try Connecting to ");
+  Serial.println("Kobler til:  ");
   Serial.println(ssid);
-  // Connect to your wi-fi modem
+  // Koble til ruteren
   WiFi.begin(ssid, passord);
   
   //Vent for wifi tilkobling
