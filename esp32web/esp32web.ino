@@ -60,8 +60,8 @@ int mi;       //minutt
 int ss;       //Sekund
 
 //Nettverk, SSID & Password
-const char* ssid = "PBM";  // SSID (Ruterens)
-const char* passord = "pbmeiendom";  //WiFi passord
+const char* ssid = "Strindvegen77-2,4G";  // SSID (Ruterens)
+const char* passord = "melodictulip927";  //WiFi passord
 WebServer server(80);  // Object of WebServer(HTTP port, 80 is defult)
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

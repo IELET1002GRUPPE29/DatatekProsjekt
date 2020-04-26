@@ -104,8 +104,8 @@ float minverdiGass = 10000;
 
 //Nettverk og Blynk
 char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
-char ssid[] = "PBM";                                //Nettverksnavn
-char pass[] = "pbmeiendom";                         //Passord til nettverket
+char ssid[] = "Strindvegen77-2,4G";                                //Nettverksnavn
+char pass[] = "melodictulip927";                         //Passord til nettverket
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 // ===============================================================================================================
@@ -118,7 +118,7 @@ void setup() {
   while (!Serial) {
     delay(1);
   }
-
+  
     //Definering av pimodes
   pinMode(tempPin, INPUT);    
   pinMode(gassPin, INPUT);    
@@ -130,8 +130,10 @@ void setup() {
 
   //Initiering av I2C kommunikasjon
 
-  lcd.begin();                                //Starter LCD
+  lcd.init();                                //Starter LCD
   lcd.print("Trykk BOOT BTN");                //Print tekst på lcd
+  lcd.backlight();
+  
 
   pca9685.begin();                             //Starter PCA9685
   pca9685.setPWMFreq(60);                      // Servo kjører på ca. 60hz
@@ -354,7 +356,7 @@ void loop() {
       alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
       alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
       digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink
-      ledcWrite(0, 100*!alarmstate);                              //Send PWM signal på buzzer
+      ledcWrite(0, 25  *!alarmstate);                              //Send PWM signal på buzzer
       pca9685.setPWM(0, 0,SERVOSWIPE[alarmstate]);                //Sett Servo PWM signal til min/max (0/180) grader
       forrige_alarmtid = tid_nu;                                  //Ny tid
 
