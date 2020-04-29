@@ -271,11 +271,11 @@ void myTimerEvent()   //Kalles hvert x sek, som definert i setup
   avlesningerTemp[readIndex] = float(temp);
   avlesningerLux[readIndex] = float(lux);
   avlesningerGass[readIndex] = float(gass);
-  maks_min(temp, gass, lux);
+  
+  maks_min(temp, gass, lux);                //Finn maks og min verdier til avlesningene.
   
   //Iterer til neste posisjon i arrayet:
   readIndex = readIndex + 1;
-  Serial.println(readIndex);
   
   // Dersom vi er på enden av det relevante spektrumet av arrayen..
   if (readIndex >= relevantnumReadings) {
