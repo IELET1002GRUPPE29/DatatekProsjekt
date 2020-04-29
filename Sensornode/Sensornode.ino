@@ -1,15 +1,12 @@
 /*
   Sensornode
   Sensornoden er bygget rundt en ESP32, der det er blitt brukt en MQ2 Gass sensor, Vl6180x ToF sensor og en NTC
-  termistor i spenningsdeler som sensorer. I tilleg er det blitt brukt; servo motor, buzzer, lysdiode, knapp og 
+  termistor i spenningsdeler som sensorer. I tilleg er det blitt brukt; servo motor, buzzer, lysdiode, knapp og
   LCD skjerm som brukergrensesnitt. Sensornoden er oppkoblet mot Blynk på NTNU.io sin sky, gjennom Blynk kan man
   få grafisk innsyn i sensoravlesningene og teste servo motoren.
-
   Datatek prosjekt
   Av Michael Berg
 */
-
-
 // ===============================================================================================================
 //          INKLUDERING AV BIBLIOTEK OG DEFINISJON AV OBJEKTER
 #define BLYNK_PRINT Serial
@@ -19,20 +16,18 @@
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <BlynkSimpleEsp32.h>
-#include "Adafruit_VL6180X.h"
+#include <Adafruit_VL6180X.h>
 #include <LiquidCrystal_I2C.h>
 
 WidgetTerminal terminal(V5);
 WidgetLED alarmled(V14);
 BlynkTimer timer;
-Adafruit_VL6180X vl = Adafruit_VL6180X(); //BRUKER 0x29 I2C adresse
-Adafruit_PWMServoDriver pca9685 = Adafruit_PWMServoDriver(0x40); //0x40 I2C adresse på samme I2C linje som vl6180x
-LiquidCrystal_I2C lcd(0x27, 16, 2);       //I2C LCD Skjerm bruker 0x27 som addresse på samme I2C linje...
+Adafruit_VL6180X vl = Adafruit_VL6180X();                         //BRUKER 0x29 I2C adresse
+Adafruit_PWMServoDriver pca9685 = Adafruit_PWMServoDriver(0x40);  //0x40 I2C adresse på samme I2C linje som vl6180x
+LiquidCrystal_I2C lcd(0x27, 16, 2);                               //I2C LCD Skjerm bruker 0x27 som addresse på samme I2C linje...
 
-
-#define SERVOMIN  125 // this is the 'minimum' pulse length count (out of 4096)
-#define SERVOMAX  575 // this is the 'maximum' pulse length count (out of 4096)
-
+#define SERVOMIN  102 // Minste PWM pulsbredde(0.5ms), skal gi 0 grader ...
+#define SERVOMAX  512 // Maks PWM pulsbredde(2.5ms), skal gi 180 grader...
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 
@@ -50,8 +45,8 @@ int test_dur = 1000;                      //Tid mellom servosveip
 int maks_min_tid = 30000;                 //Tid for hver maks/min avlesning
 unsigned long knapptid = 0;               //Tidsteller som brukes til å registrere sit knappetrykk for å debounce
 int debouncetid = 100;                    //Tid som brukes for å debounce
-
 //Enable, teller og status verdier
+
 bool alarmos = 0;                         //Alarmstatusverdi
 bool en_boolsk_verdi_for_utregning = 0;   //Verdi som bestemmer når man kan regne ut gjennomsnittet
 bool alarmstate = 1;                      //Alarmstatus 0 eller 1, bestemmer om ting skal være av eller på
@@ -104,57 +99,51 @@ float minverdiGass = 10000;
 
 //Nettverk og Blynk
 char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
-char ssid[] = "PBM";                                //Nettverksnavn
-char pass[] = "pbmeiendom";                         //Passord til nettverket
+char ssid[] = "Strindvegen77-2,4G";                                //Nettverksnavn
+char pass[] = "melodictulip927";                         //Passord til nettverket
+
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
 // ===============================================================================================================
 //          SETUP
 void setup() {
-  
   Serial.begin(9600);           //Starter seriekommunikasjon
-
   //Vent for Serial kommunikasjon
   while (!Serial) {
     delay(1);
   }
-
-    //Definering av pimodes
-  pinMode(tempPin, INPUT);    
-  pinMode(gassPin, INPUT);    
-  pinMode(ledPin, OUTPUT);   
-  pinMode(buzzerPin, OUTPUT); 
-
+  
+  //Definering av pimodes
+  pinMode(tempPin, INPUT);
+  pinMode(gassPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  
   ledcAttachPin(buzzerPin, 0); //Sett buzzerPin på kanal 0
   ledcSetup(0, 4000, 8); //Kanal 0, PWM frekvens, 8-bit oppløsning
-
   //Initiering av I2C kommunikasjon
-
-  lcd.begin();                                //Starter LCD
-  lcd.print("Trykk BOOT BTN");                //Print tekst på lcd
-
+  
+  lcd.begin();                               //Starter LCD, init() er et mulig alternativ
+  lcd.print("Trykk BOOT BTN");               //Print tekst på lcd
+  lcd.backlight();                           //Skrur på baklys på LCD-skjerm
+ 
   pca9685.begin();                             //Starter PCA9685
-  pca9685.setPWMFreq(60);                      // Servo kjører på ca. 60hz
+  pca9685.setPWMFreq(50);                      //Frekvens på 50Hz
   
   //Vent til I2C kommunikasjon er startet mellom ESP32 og VL6180x
   while (! vl.begin()) {
     Serial.println("Fant ikke Vl6180x");
-    delay (1);                                 
+    delay (1);
   }
-  
-
-  Blynk.begin(auth, ssid, pass, IPAddress(91, 192, 221, 40), 8080);   //Koble opp ESP32 til nettverket og skyen   
-  timer.setInterval(50L, myTimerEvent);                               //Blynk timer fopr å kjøre myTimerEvent funksjon                         
+  Blynk.begin(auth, ssid, pass, IPAddress(91, 192, 221, 40), 8080);   //Koble opp ESP32 til nettverket og skyen
+  timer.setInterval(50L, myTimerEvent);                               //Blynk timer fopr å kjøre myTimerEvent funksjon
 }
-
-
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 
-
 // ===============================================================================================================
 //          FUNKSJONER
-
 void maks_min(float temperatur, float gassniva, float lux) {
   if (temperatur > maxverdiTemp) {
     maxverdiTemp = temperatur;
@@ -177,9 +166,10 @@ void maks_min(float temperatur, float gassniva, float lux) {
 };
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 //En funksjon for å bestemme hvilken sensorer som det skal leses fra og sender det til V4
 BLYNK_WRITE(V3) {
-  switch (param.asInt()) {                              //Switch som tar input fra virtuel pin no. 3. 
+  switch (param.asInt()) {                              //Switch som tar input fra virtuel pin no. 3.
     case 1: {                                           //1 = temperatur
         selectedreading = 1;
         terminal.clear();
@@ -227,18 +217,19 @@ BLYNK_WRITE(V7) {
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 //Funksjon som finner gjennomsnittet av en array med gitt lengde
-float gjennomsnittArray(float * array, int len) { 
+float gjennomsnittArray(float * array, int len) {
   total = 0;                                            //Setter total til 0
   for (int i = 0; i < len; i++)                         //Itererer gjennom arrayet
-  { 
+  {
     total += float(array[i]);                           //Legger til verdier til total
   }
-
   return (float(total) / float(len));                   //Returner gjennomsnittet
 }
 
 //&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
 //Blynk timer event
 void myTimerEvent()   //Kalles hvert x sek, som definert i setup
 {
@@ -250,8 +241,6 @@ void myTimerEvent()   //Kalles hvert x sek, som definert i setup
   Blynk.virtualWrite(V0, temp);                               //Sendes til Blynk
   Blynk.virtualWrite(V1, gass);
   Blynk.virtualWrite(V2, lux);
-
-
   if (selectedreading == 1) {
     Blynk.virtualWrite(V4, temp);
     String printstring = "The temperature is: " + String(temp) + "°C\n";
@@ -260,17 +249,15 @@ void myTimerEvent()   //Kalles hvert x sek, som definert i setup
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerTemp, relevantnumReadings));
     }
   }
-
   if (selectedreading == 2) {
     Blynk.virtualWrite(V4, gass);
     String printstring = "The analog gas reading is: " + String(gass) + "\n";
     terminal.print(printstring);
     if (en_boolsk_verdi_for_utregning == 1) {
-      //gjennomsnittArray(avlesningerGass,relevantnumReadings);
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerGass, relevantnumReadings));
     }
   }
-
+  
   if (selectedreading == 3) {
     Blynk.virtualWrite(V4, lux);
     String printstring = "The lux measurement is: " + String(lux) + "\n";
@@ -279,21 +266,18 @@ void myTimerEvent()   //Kalles hvert x sek, som definert i setup
       Blynk.virtualWrite(V6, gjennomsnittArray(avlesningerLux, relevantnumReadings));
     }
   }
-
-
+  
   // Hent inn verdier:
-
   avlesningerTemp[readIndex] = float(temp);
   avlesningerLux[readIndex] = float(lux);
   avlesningerGass[readIndex] = float(gass);
   maks_min(temp, gass, lux);
+  
   //Iterer til neste posisjon i arrayet:
   readIndex = readIndex + 1;
-
   Serial.println(readIndex);
-
+  
   // Dersom vi er på enden av det relevante spektrumet av arrayen..
-
   if (readIndex >= relevantnumReadings) {
     // Start om igjen..
     en_boolsk_verdi_for_utregning = 1;
@@ -311,86 +295,74 @@ void myTimerEvent()   //Kalles hvert x sek, som definert i setup
     lcd.clear();
     lcd.print("Lux: " + String(lux));
   }
-
 }
-
-//&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
+
 // ===============================================================================================================
-
-
-
 void loop() {
   Blynk.run();
   timer.run();
   tid_nu = millis();
-
+  
   if (digitalRead(0) == LOW && knappstatus == 0) {    //Dersom knappen trykkes ned og "knappstatus" er 0
-
     if ((tid_nu - knapptid) > debouncetid) {     //Dersom det har gått debounce tid siden sist knapptid
       knappstatus = 1;                            //Sett knappstatus til 1
       knappteller++;                              //Legg til en på telleren
       knapptid = tid_nu;                          //Ny knappetid
     }
   }
+  
   if (knappstatus == 1 && digitalRead(0) == HIGH) {   //Dersom knappstatus er 1 og knappen er ikke nedtrykt
-    knappstatus = 0;                                  //Reset til 0                    
+    knappstatus = 0;                                  //Reset til 0
   }
+  
   if (knappteller > 3) {                  //Dersom knappteller overstiger 3
     knappteller = 1;                      //Skal den resettes til 1
   }
-
-
+  
   if (test_buttonState == 1 && tid_nu > test_timer + test_dur) {    //Dersom knappen holdes ned og det har gått nok tid siden test_timer
     servotest = !servotest;                                         //Omdefiner 0->1 1->0
-    pca9685.setPWM(0, 0,SERVOSWIPE[servotest]);                     //Sett Servo PWM signal til min/max (0/180) grader
+    pca9685.setPWM(0, 0, SERVOSWIPE[servotest]);                    //Sett Servo PWM signal til min/max (0/180) grader
     test_timer = tid_nu;                                            //Ny tid
   }
-
+  
   if (alarmos == 1) {                                             //Dersom alarmverdi er 1
     if (tid_nu > 1000 + forrige_alarmtid) {                       //Dersom det har gått ett sekund siden sist alarmtid
       alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
       alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
       digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink
-      ledcWrite(0, 100*!alarmstate);                              //Send PWM signal på buzzer
-      pca9685.setPWM(0, 0,SERVOSWIPE[alarmstate]);                //Sett Servo PWM signal til min/max (0/180) grader
+      ledcWrite(0, 25  * !alarmstate);                            //Send PWM signal på buzzer
+      pca9685.setPWM(0, 0, SERVOSWIPE[alarmstate]);               //Sett Servo PWM signal til min/max (0/180) grader
       forrige_alarmtid = tid_nu;                                  //Ny tid
-
     }
-
+    
     if (tid_nu > alarmlengde + alarmtid) {                        //Dersom det har gått "alarmlengde" tid
       servo_end_state = !servo_end_state;                         //Bytt endeposisjon for servo 0->1 1->0
       alarmled.setValue(0);                                       //Blynk LED av
       digitalWrite(ledPin, LOW);                                  //Fysisk LED av
       ledcWrite(0, 0);                                            //Skru av buzzern
-      pca9685.setPWM(0, 0,SERVOSWIPE[servo_end_state]);           //Sett Servo PWM signal til min/max (0/180) grader 
+      pca9685.setPWM(0, 0, SERVOSWIPE[servo_end_state]);          //Sett Servo PWM signal til min/max (0/180) grader
       alarmos = 0;                                                //Sett alarmverdi til 0 (av)
     }
-
   }
-
-
-
+  
   if (tid_nu > tid_prev + maks_min_tid) {   //Dersom det har gått maks_min_tid (30s) siden sist tid_prev
     if (maxverdiTemp > terskel_temp) {      //Dersom maxverdiTemp er større enn terskel_temp
       terskel_teller++;                     //Legg til en på terskel telleren
     }
-    if (maxverdiLux > terskel_lux) {        
+    if (maxverdiLux > terskel_lux) {
       terskel_teller++;
     }
     if (maxverdiGass > terskel_gass) {
       terskel_teller++;
     }
-
     if (terskel_teller >= 2) {      //Dersom to sensorer gir verdier som er over terskelverdiene
       alarmos = 1;                  //Sett alarmverdi til 1 (på)
       alarmtid = tid_nu;            //Ny alarmtid
       //Blynk.notify("ALARM");      //Fungerer ikke på NTNU.io sin sky
     }
-
-
+    
     //Skriv verdier til blynk
     Blynk.virtualWrite(V8, maxverdiTemp);
     Blynk.virtualWrite(V9, minverdiTemp);
@@ -398,16 +370,15 @@ void loop() {
     Blynk.virtualWrite(V11, minverdiLux);
     Blynk.virtualWrite(V12, maxverdiGass);
     Blynk.virtualWrite(V13, minverdiGass);
-
+    
     // SÅ NULLSTILL DEM
-    maxverdiTemp = 0;           //Maksimumsverdiene settes til en lav verdi          
+    maxverdiTemp = 0;           //Maksimumsverdiene settes til en lav verdi
     maxverdiLux = 0;
     maxverdiGass = 0;
     minverdiTemp = 10000;       //Minimumsverdiene settes til en høy verdi
     minverdiLux = 10000;
     minverdiGass = 10000;
     terskel_teller = 0;       //Nullstill terskelteller
-
     tid_prev = tid_nu;    //Definer ny tid_prev
   }
 }
