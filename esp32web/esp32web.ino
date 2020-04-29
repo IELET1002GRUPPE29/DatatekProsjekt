@@ -102,7 +102,7 @@ void getTime()
 {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obtain time");
+    Serial.println("Fikk ikke hente tid");
     return;
   }
   hh24 = timeinfo.tm_hour;
@@ -176,3 +176,5 @@ void loop() {
   }
   server.handleClient();      //Sjekker webserveren og håndterer hendelser på html siden
 }
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// ===============================================================================================================
