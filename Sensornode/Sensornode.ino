@@ -101,7 +101,10 @@ float minverdiGass = 10000;
 char auth[] = "thi6MWmSU17ZP4nTzTsTdojm2wV5hJ2x";   //Blynk authentication code
 char ssid[] = "Strindvegen77-2,4G";                                //Nettverksnavn
 char pass[] = "melodictulip927";                         //Passord til nettverket
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // ===============================================================================================================
 
@@ -114,20 +117,38 @@ void setup() {
     delay(1);
   }
   
+<<<<<<< HEAD
   //Definering av pimodes
   pinMode(tempPin, INPUT);
   pinMode(gassPin, INPUT);
   pinMode(ledPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
   
+=======
+    //Definering av pimodes
+  pinMode(tempPin, INPUT);    
+  pinMode(gassPin, INPUT);    
+  pinMode(ledPin, OUTPUT);   
+  pinMode(buzzerPin, OUTPUT); 
+
+>>>>>>> master
   ledcAttachPin(buzzerPin, 0); //Sett buzzerPin på kanal 0
   ledcSetup(0, 4000, 8); //Kanal 0, PWM frekvens, 8-bit oppløsning
   //Initiering av I2C kommunikasjon
+<<<<<<< HEAD
   
   lcd.begin();                               //Starter LCD, init() er et mulig alternativ
   lcd.print("Trykk BOOT BTN");               //Print tekst på lcd
   lcd.backlight();                           //Skrur på baklys på LCD-skjerm
  
+=======
+
+  lcd.init();                                //Starter LCD
+  lcd.print("Trykk BOOT BTN");                //Print tekst på lcd
+  lcd.backlight();
+  
+
+>>>>>>> master
   pca9685.begin();                             //Starter PCA9685
   pca9685.setPWMFreq(50);                      //Frekvens på 50Hz
   
@@ -332,8 +353,13 @@ void loop() {
       alarmstate = !alarmstate;     //Skift status                //Omdefiner 0->1 1->0
       alarmled.setValue(alarmstate * 255);                        //Blynk LED blink
       digitalWrite(ledPin, alarmstate);                           //Fysisk LED blink
+<<<<<<< HEAD
       ledcWrite(0, 25  * !alarmstate);                            //Send PWM signal på buzzer
       pca9685.setPWM(0, 0, SERVOSWIPE[alarmstate]);               //Sett Servo PWM signal til min/max (0/180) grader
+=======
+      ledcWrite(0, 25  *!alarmstate);                              //Send PWM signal på buzzer
+      pca9685.setPWM(0, 0,SERVOSWIPE[alarmstate]);                //Sett Servo PWM signal til min/max (0/180) grader
+>>>>>>> master
       forrige_alarmtid = tid_nu;                                  //Ny tid
     }
     
