@@ -1,7 +1,0 @@
-Xdd
-
-Når du skal laste opp kode så må du
-1. Stage file
-2. Skriv en kort summary og description
-3. Så commit
-4. Nå kan alle se og endre på koden din!
