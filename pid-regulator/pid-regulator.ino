@@ -48,15 +48,11 @@ void calibrateSensors() {
   delay(1000);
   for(int i = 0; i < 120; i++)
   {
-    if (i > 30 && i <= 90)
-    {
+    if (i > 30 && i <= 90) {
       motors.setSpeeds(-200, 200);
-    }
-    else
-    {
+    } else {
       motors.setSpeeds(200, -200);
     }
-
     lineSensors.calibrate();
   }
   motors.setSpeeds(0, 0);
