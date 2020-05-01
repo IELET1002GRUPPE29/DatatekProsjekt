@@ -17,8 +17,8 @@ L3G gyro;
 /////////////////////////////////////////////////////
 // Constants and variables
 /////////////////////////////////////////////////////
-bool possibleTurnAround = false;            // Detects a dead end 
-bool possibleTurnLeft = false;              // Mu
+bool possibleTurnAround = false;            // A possible turnaround is detected
+bool possibleTurnLeft = false;              // A possible left turn is detected
 bool turn = false;                          // Must make a turn soon
 const int maxSpeed = 180;                   // Max speed for the Zumo
 const int turnSpeed = 100;                  // Turning speed 
