@@ -92,6 +92,10 @@ void PID_drive() {
     motors.setSpeeds(leftSpeed, rightSpeed);
 }
 
+/////////////////////////////////////////////////////
+// Setup and loop
+/////////////////////////////////////////////////////
+
 void setup() {
   // put your setup code here, to run once:
    Serial.begin(9600);
@@ -117,10 +121,6 @@ void setup() {
     lcd.print("to go!");
     buttonA.waitForButton();
 }
-
-/////////////////////////////////////////////////////
-// Setup and loop
-/////////////////////////////////////////////////////
 
 void loop() {
   // Gets the current position from the sensorvalues 0 - 4000, where 0 is right and 4000 is left
